@@ -31,13 +31,13 @@ import {
 // ---------------------------------------------------------------------------
 
 const user = {
-  name: "Carlos Oliveira",
+  name: "Alessandro Munhoz Schwamborn",
   accountNumber: "0001 · 12345-6",
   avatarUrl: "",
 };
 
 const balance = {
-  available: 12_480.75,
+  available: 72_480.75,
   invested: 34_200.0,
   limit: 5_000.0,
 };
@@ -98,6 +98,7 @@ const transactions: {
     date: "19 mar",
     type: "debit",
   },
+ 
 ];
 
 // ---------------------------------------------------------------------------
@@ -197,7 +198,6 @@ function BalanceCard() {
 function QuickActions() {
   const actions = [
     { icon: <ArrowUpward />, label: "Transferir" },
-    { icon: <ArrowDownward />, label: "Receber" },
     { icon: <CreditCard />, label: "Cartão" },
     { icon: <TrendingUp />, label: "Investir" },
   ];
@@ -336,7 +336,7 @@ export default function Home() {
             fontWeight={800}
             sx={{ color: "#1a237e", letterSpacing: -0.5 }}
           >
-            NovoBanco
+            Banco Master
           </Typography>
         </Stack>
 
