@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   AccountBalance,
   ArrowDownward,
@@ -25,20 +26,19 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { ensureAuthToken, getBackendStatus, listAccounts, createDefaultAccount } from "./backendClient";
 
-// ---------------------------------------------------------------------------
-// Dados fictícios
-// ---------------------------------------------------------------------------
+// e aqui começa... O meu sofrimento sem fim
 
 const user = {
-  name: "Alessandro Munhoz Schwamborn",
+  name: "Lorenzo Oliveira Schwamborn",
   accountNumber: "0001 · 12345-6",
   avatarUrl: "",
 };
 
 const balance = {
-  available: 72_480.75,
-  invested: 34_200.0,
+  available: 1.75,
+  invested: 777.0,
   limit: 5_000.0,
 };
 
@@ -98,8 +98,30 @@ const transactions: {
     date: "19 mar",
     type: "debit",
   },
- 
+  {
+    id: 7,
+    description: "Farmácia",
+    category: "Saúde",
+    amount: -96.0,
+    date: "20 mar",
+    type: "debit",
+  }
 ];
+
+interface AccountData {
+  id: string;
+  accountNumber: string;
+  holderName: string;
+  balance: number;
+  createdAt: string;
+}
+
+const initialState = {
+  backendStatus: 'desconectado',
+  accounts: [] as AccountData[],
+  loading: true,
+  error: '',
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -304,37 +326,70 @@ function TransactionList() {
 // ---------------------------------------------------------------------------
 
 export default function Home() {
+  const [backendStatus, setBackendStatus] = useState(initialState.backendStatus);
+  const [accounts, setAccounts] = useState<AccountData[]>(initialState.accounts);
+  const [loading, setLoading] = useState(initialState.loading);
+  const [error, setError] = useState(initialState.error);
+
+  useEffect(() => {
+    async function initialize() {
+      try {
+        setLoading(true);
+        setBackendStatus('conectando');
+
+        await getBackendStatus();
+        setBackendStatus('conectado');
+
+        const token = await ensureAuthToken();
+        let accountList = await listAccounts(token);
+
+        if (!Array.isArray(accountList) || accountList.length === 0) {
+          await createDefaultAccount(token);
+          accountList = await listAccounts(token);
+        }
+
+        setAccounts(accountList);
+      } catch (err) {
+        setBackendStatus('erro');
+        setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      } finally {
+        setLoading(false);
+      }
+    }
+    initialize();
+  }, []);
+
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        bgcolor: "#f5f6fa",
-        display: "flex",
-        flexDirection: "column",
+        minHeight: '100vh',
+        bgcolor: '#f5f6fa',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {/* Header */}
       <Box
         component="header"
         sx={{
-          bgcolor: "#fff",
-          borderBottom: "1px solid #e8eaf6",
+          bgcolor: '#fff',
+          borderBottom: '1px solid #e8eaf6',
           px: { xs: 2, sm: 4 },
           py: 1.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'sticky',
           top: 0,
           zIndex: 10,
         }}
       >
         <Stack direction="row" alignItems="center" gap={1}>
-          <AccountBalance sx={{ color: "#1a237e", fontSize: 28 }} />
+          <AccountBalance sx={{ color: '#1a237e', fontSize: 28 }} />
           <Typography
             variant="h6"
             fontWeight={800}
-            sx={{ color: "#1a237e", letterSpacing: -0.5 }}
+            sx={{ color: '#1a237e', letterSpacing: -0.5 }}
           >
             Banco Master
           </Typography>
@@ -351,8 +406,8 @@ export default function Home() {
             sx={{
               width: 34,
               height: 34,
-              bgcolor: "#1a237e",
-              fontSize: "0.8rem",
+              bgcolor: '#1a237e',
+              fontSize: '0.8rem',
               fontWeight: 700,
               ml: 0.5,
             }}
@@ -368,12 +423,12 @@ export default function Home() {
         sx={{
           flex: 1,
           maxWidth: 480,
-          width: "100%",
-          mx: "auto",
+          width: '100%',
+          mx: 'auto',
           px: { xs: 2, sm: 3 },
           py: 3,
-          display: "flex",
-          flexDirection: "column",
+          display: 'flex',
+          flexDirection: 'column',
           gap: 3,
         }}
       >
@@ -386,6 +441,54 @@ export default function Home() {
             {user.name} 👋
           </Typography>
         </Box>
+
+        <Card sx={{ p: 2 }}>
+          <CardContent>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Integração do backend
+            </Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+              <Typography variant="body1" fontWeight={600}>
+                Status do servidor:
+              </Typography>
+              <Chip
+                label={backendStatus}
+                color={backendStatus === 'conectado' ? 'success' : backendStatus === 'erro' ? 'error' : 'warning'}
+                size="small"
+              />
+            </Stack>
+            {loading && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Conectando ao backend...
+              </Typography>
+            )}
+            {error && (
+              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                {error}
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+
+        {accounts.length > 0 && (
+          <Card sx={{ p: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Contas bancárias carregadas do backend
+              </Typography>
+              <List>
+                {accounts.map((account) => (
+                  <ListItem key={account.id} disableGutters>
+                    <ListItemText
+                      primary={account.holderName}
+                      secondary={`Conta ${account.accountNumber} • ${formatCurrency(account.balance)}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Card de saldo */}
         <BalanceCard />
